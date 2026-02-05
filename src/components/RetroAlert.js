@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import PixelIcon from './PixelIcon';
 
-export const RetroAlert = ({ visible, title, message, onConfirm, theme, type = 'info' }) => {
+export const RetroAlert = ({ visible, title, message, onConfirm, onCancel, confirmText, cancelText, theme, type = 'info' }) => {
     return (
         <Modal
             animationType="fade"
@@ -27,15 +27,27 @@ export const RetroAlert = ({ visible, title, message, onConfirm, theme, type = '
                         {message}
                     </Text>
 
-                    {/* Footer / Button */}
-                    <TouchableOpacity
-                        style={[styles.button, theme.buttonStyle]}
-                        onPress={onConfirm}
-                    >
-                        <Text style={[styles.textStyle, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
-                            {type === 'achievement' ? 'AWESOME!' : 'GOT IT'}
-                        </Text>
-                    </TouchableOpacity>
+                    {/* Footer / Buttons */}
+                    <View style={styles.buttonContainer}>
+                        {onCancel && (
+                            <TouchableOpacity
+                                style={[styles.button, styles.cancelButton, { borderColor: theme.textSecondary }]}
+                                onPress={onCancel}
+                            >
+                                <Text style={[styles.textStyle, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>
+                                    {cancelText || 'CANCEL'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                            style={[styles.button, theme.buttonStyle, onCancel && { marginLeft: 10 }]}
+                            onPress={onConfirm}
+                        >
+                            <Text style={[styles.textStyle, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
+                                {type === 'achievement' ? 'AWESOME!' : (confirmText || 'GOT IT')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -80,13 +92,21 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
     },
+    buttonContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        width: '100%',
+    },
     button: {
         padding: 15,
         elevation: 2,
-        minWidth: 150,
+        minWidth: 120,
         alignItems: 'center',
         borderWidth: 2,
         borderRadius: 8,
+    },
+    cancelButton: {
+        backgroundColor: 'transparent',
     },
     textStyle: {
         fontWeight: "bold",

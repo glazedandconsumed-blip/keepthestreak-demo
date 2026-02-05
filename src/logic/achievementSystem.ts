@@ -30,35 +30,35 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'streak-3',
         title: 'Insert Coin',
         description: 'Maintained a streak for 3 days. The arcade is open.',
-        icon: '🪙',
+        icon: 'currency', // Was 🪙
         condition: (s) => s === 3,
     },
     {
         id: 'streak-7',
         title: '8-Bit Hero',
         description: '7 days. Now you\'re playing with power!',
-        icon: '👾',
+        icon: 'bit', // Was 👾
         condition: (s) => s === 7,
     },
     {
         id: 'streak-16',
         title: 'Blast Processing',
         description: '16 days. High definition graphics!',
-        icon: '🦔',
+        icon: 'streak', // Was 🦔 - using flame for speed
         condition: (s) => s === 16,
     },
     {
         id: 'streak-30',
         title: '64-Bit Era',
         description: '30 days. Welcome to the third dimension.',
-        icon: '🧊',
+        icon: 'cpu', // Was 🧊
         condition: (s) => s === 30,
     },
     {
         id: 'streak-100',
         title: 'The Wizard',
         description: '100 days. I love the Power Glove. It\'s so bad.',
-        icon: '🥊',
+        icon: 'trophy', // Was 🥊
         condition: (s) => s === 100,
     },
 
@@ -67,7 +67,7 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'artifact-abacus',
         title: 'The Abacus',
         description: 'Before pixels, there were beads. (~2700 BC)',
-        icon: '🧮',
+        icon: 'chip', // Was 🧮
         condition: (s) => s === 5,
         data: { year: '2700 BC', type: 'hardware' }
     },
@@ -75,7 +75,7 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'artifact-mechanism',
         title: 'Antikythera',
         description: 'First analog computer. Found in a shipwreck. (100 BC)',
-        icon: '⚙️',
+        icon: 'fan', // Was ⚙️ - using fan for gears
         condition: (s) => s === 12,
         data: { year: '100 BC', type: 'hardware' }
     },
@@ -83,7 +83,7 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'artifact-nes',
         title: '8-Bit Console',
         description: 'It revived the industry. Blow on it. (1985)',
-        icon: '🕹️',
+        icon: 'save', // Was 🕹️ - floppy disk era
         condition: (s) => s === 19,
         data: { year: '1985', type: 'console' }
     },
@@ -91,7 +91,7 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'artifact-gb',
         title: 'Pocket Power',
         description: 'Green screens and AA batteries. Tetris machine. (1989)',
-        icon: '📱',
+        icon: 'bit', // Was 📱
         condition: (s) => s === 25,
         data: { year: '1989', type: 'console' }
     },
@@ -99,17 +99,41 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'artifact-snes',
         title: 'Super Power',
         description: 'Mode 7 graphics and 16-bit sound. (1990)',
-        icon: '🎮',
+        icon: 'chip', // Was 🎮
         condition: (s) => s === 42,
         data: { year: '1990', type: 'console' }
+    },
+    {
+        id: 'artifact-sliderule',
+        title: 'Slipstick',
+        description: 'No batteries required. Just logs. (1622)',
+        icon: 'ruler',
+        condition: (s) => s === 35,
+        data: { year: '1622', type: 'hardware' }
+    },
+    {
+        id: 'artifact-watch',
+        title: 'Wrist Calc',
+        description: 'Style and function. Buttons are tiny. (1975)',
+        icon: 'watch',
+        condition: (s) => s === 45,
+        data: { year: '1975', type: 'hardware' }
     },
     {
         id: 'artifact-calc',
         title: 'Ti-83',
         description: 'The ultimate tool for math and Snake. (1996)',
-        icon: '📟',
+        icon: 'bit', // Was 📟
         condition: (s) => s === 50,
         data: { year: '1996', type: 'hardware' }
+    },
+    {
+        id: 'artifact-mainframe',
+        title: 'Big Iron',
+        description: 'Vacuum tubes and punch cards. (1946)',
+        icon: 'server',
+        condition: (s) => s === 60,
+        data: { year: '1946', type: 'hardware' }
     },
 
     // Math Milestones
@@ -117,21 +141,21 @@ export const ACHIEVEMENT_DEFINITIONS: Achievement[] = [
         id: 'prime_time',
         title: 'Prime Time',
         description: 'Reached a Prime Number day',
-        icon: '🔢',
+        icon: 'chip', // Was 🔢
         condition: (s) => isPrime(s) && s > 1, // Start rewarding from 2
     },
     {
         id: 'perfect_square',
         title: 'Perfect Square',
         description: 'Reached a Perfect Square day',
-        icon: '📐',
+        icon: 'cpu', // Was 📐
         condition: (s) => isPerfectSquare(s) && s > 1,
     },
     {
         id: 'fibonacci_friend',
         title: 'Fibonacci Friend',
         description: 'Reached a Fibonacci sequence day',
-        icon: '🐚',
+        icon: 'memory', // Was 🐚
         condition: (s) => fibSet.has(s),
     },
 ];

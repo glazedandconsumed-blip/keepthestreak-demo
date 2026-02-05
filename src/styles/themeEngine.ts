@@ -1,7 +1,7 @@
 
 import { TextStyle, ViewStyle } from 'react-native';
 
-export type Era = '8-bit' | '16-bit' | '32-bit';
+export type Era = '8-bit' | '16-bit' | '128-bit';
 
 interface Theme {
     background: string;
@@ -18,6 +18,12 @@ interface Theme {
     buttonStyle: ViewStyle;
     cardStyle: ViewStyle;
     headerStyle: ViewStyle;
+    crtConfig: {
+        scanlineOpacity: number;
+        vignetteOpacity: number;
+        flickerEnabled: boolean;
+        chromaticAberration: boolean; // Future placeholder
+    };
 }
 
 import { Platform } from 'react-native';
@@ -53,6 +59,12 @@ export const ERAS: Record<Era, Theme> = {
         headerStyle: {
             borderBottomWidth: 4,
             borderBottomColor: '#FFFFFF',
+        },
+        crtConfig: {
+            scanlineOpacity: 0.15,
+            vignetteOpacity: 0.3,
+            flickerEnabled: true,
+            chromaticAberration: false,
         }
     },
     '16-bit': {
@@ -83,38 +95,51 @@ export const ERAS: Record<Era, Theme> = {
         headerStyle: {
             borderBottomWidth: 2,
             borderBottomColor: '#FFD700',
+        },
+        crtConfig: {
+            scanlineOpacity: 0.05,
+            vignetteOpacity: 0.1,
+            flickerEnabled: true, // Subtle flicker
+            chromaticAberration: false,
         }
     },
-    '32-bit': {
-        background: '#1A1A1A', // PS2 Dark Gray
+    '128-bit': {
+        background: '#0F0F1A', // Deep "PlayStation 2" Boot Blue/Black void
         textPrimary: '#FFFFFF',
         textSecondary: '#A0A0A0',
-        accent: '#007AFF', // PlayStation Blue
-        fontFamily: Platform.OS === 'ios' ? 'Arial' : 'sans-serif', // Modern look
-        fontSizeScale: 1.0,
+        accent: '#0050FF', // Vivid Blue LED
+        fontFamily: 'Orbitron_400Regular', // PS2 / Cyberpunk sleek style
+        fontSizeScale: 0.9, // Orbitron is wide, reduce scale slightly
         icons: {
             life: '❤️',
             streak: '🔥',
-            currency: '🪙',
+            currency: '💎',
         },
         buttonStyle: {
-            backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassy
-            borderRadius: 20,
+            backgroundColor: 'rgba(0, 20, 80, 0.6)', // Glassy Blue Tint
+            borderRadius: 6, // Slightly rounded but techy
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.2)',
-            shadowColor: '#007AFF',
-            shadowOpacity: 0.5,
-            shadowRadius: 10,
+            borderColor: 'rgba(100, 200, 255, 0.4)',
+            shadowColor: '#0050FF',
+            shadowOpacity: 0.8,
+            shadowRadius: 15,
+            elevation: 10,
         },
         cardStyle: {
-            backgroundColor: 'rgba(30, 30, 30, 0.8)',
-            borderRadius: 20,
+            backgroundColor: 'rgba(20, 20, 30, 0.85)',
+            borderRadius: 12,
             borderWidth: 1,
             borderColor: 'rgba(255, 255, 255, 0.1)',
         },
         headerStyle: {
             borderBottomWidth: 0,
             backgroundColor: 'transparent',
+        },
+        crtConfig: {
+            scanlineOpacity: 0,
+            vignetteOpacity: 0.05, // Very subtle corner darkening
+            flickerEnabled: false,
+            chromaticAberration: true,
         }
     }
 };
@@ -122,5 +147,5 @@ export const ERAS: Record<Era, Theme> = {
 export const getEraForStreak = (streak: number): Era => {
     if (streak < 8) return '8-bit';
     if (streak < 22) return '16-bit';
-    return '32-bit';
+    return '128-bit';
 };

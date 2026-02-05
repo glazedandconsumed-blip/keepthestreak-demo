@@ -3,10 +3,15 @@ import { View, StyleSheet, Animated, Dimensions, PointerEvents } from 'react-nat
 
 const { width, height } = Dimensions.get('window');
 
-const CRTEffect = () => {
+const CRTEffect = ({ scanlineOpacity = 0.1, vignetteOpacity = 0.3, flickerEnabled = true, chromaticAberration = false }) => {
     const flickerAnim = useRef(new Animated.Value(1)).current;
 
     useEffect(() => {
+        if (!flickerEnabled) {
+            flickerAnim.setValue(1);
+            return; // Stop loop
+        }
+
         // 60Hz Flicker Effect
         Animated.loop(
             Animated.sequence([
@@ -32,27 +37,33 @@ const CRTEffect = () => {
                 }),
             ])
         ).start();
-    }, [flickerAnim]);
+    }, [flickerAnim, flickerEnabled]);
 
     return (
         <View style={styles.container} pointerEvents="none">
             {/* Flicker Layer */}
-            <Animated.View style={[styles.flickerLayer, { opacity: flickerAnim }]} />
+            {flickerEnabled && (
+                <Animated.View style={[styles.flickerLayer, { opacity: flickerAnim }]} />
+            )}
 
-            {/* Scanlines Layer - Simple efficient version: Repeating linear gradient simulation via semi-transparent rows? 
-            Actually, rendering 1000 views is bad for performance. 
-            Let's use a simple distinct Overlay with a background color that simulates the "darkening" lines 
-            by just being a single view with a pattern if possible, or just a heavy static noise. 
-            
-            Better approach for React Native without assets: 
-            Just the flicker and a slight vignette is often enough.
-            But if we want scanlines, we ideally need an image.
-            I will leave the scanline visual placeholder simple for now (flicker is the main request).
-        */}
-            <View style={styles.scanlineOverlay} />
+            {/* Scanlines Layer */}
+            {scanlineOpacity > 0 && (
+                <View style={[styles.scanlineOverlay, { backgroundColor: `rgba(0, 0, 0, ${scanlineOpacity})` }]} />
+            )}
 
-            {/* Vignette (Corner darkening) - Simulated with borders */}
-            <View style={styles.vignette} />
+            {/* Vignette (Corner darkening) */}
+            {vignetteOpacity > 0 && (
+                <View style={[styles.vignette, {
+                    borderWidth: 50,
+                    borderColor: `rgba(0,0,0,${vignetteOpacity})`,
+                    borderRadius: 20
+                }]} />
+            )}
+
+            {/* Placeholder for Chromatic Aberration */}
+            {chromaticAberration && (
+                <View style={[styles.aberrationLayer, { backgroundColor: 'transparent' }]} />
+            )}
         </View>
     );
 };
@@ -65,11 +76,11 @@ const styles = StyleSheet.create({
     },
     flickerLayer: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(255, 255, 255, 0.02)', // Very subtle brightening/darkening
+        backgroundColor: 'rgba(50, 255, 50, 0.03)', // Subtle Green Tint
     },
     scanlineOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.1)', // Just a dark tint for now, real scanlines need an image
+        backgroundColor: 'rgba(0, 20, 0, 0.1)', // Darker Green scanlines
     },
     vignette: {
         ...StyleSheet.absoluteFillObject,
