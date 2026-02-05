@@ -131,29 +131,6 @@ export default function App() {
             lives={lives}
             credits={credits}
             isPro={isPro}
-            onUnlockPro={() => {
-              // Mock Purchase Flow
-              setAlertConfig({
-                visible: true,
-                title: "UNLOCK PRO?",
-                message: "Support development and unlock ZEN MODE & TIME ATTACK for $4.99? (Mock)",
-                type: 'info',
-                onConfirm: () => {
-                  unlockPro();
-                  setAlertConfig(prev => ({ ...prev, visible: false }));
-                  // Show Success Alert after a delay
-                  setTimeout(() => {
-                    setAlertConfig({
-                      visible: true,
-                      title: "THANKS!",
-                      message: "You are now a PRO user. Enjoy the new modes!",
-                      type: 'success',
-                      onConfirm: () => setAlertConfig(p => ({ ...p, visible: false }))
-                    });
-                  }, 500);
-                }
-              });
-            }}
             onStartGame={() => setCurrentScreen('MAP')}
             onShowTrophies={() => setCurrentScreen('TROPHIES')}
             onShowLeaderboard={() => setCurrentScreen('LEADERBOARD')}

@@ -148,6 +148,12 @@ export const generateDailyChallenge = (streakDay: number, previousAnswer: number
         { q: "Game Boy Release Year (NA)", a: 1989, clue: "Tetris in your pocket.", month: 6, day: 31 }, // July 31
         { q: "First Web Page Live (Year)", a: 1991, clue: "The internet became for everyone.", month: 7, day: 6 }, // Aug 6
         { q: "Pac-Man Arcade Release (Year)", a: 1980, clue: "Waka waka waka.", month: 4, day: 22 }, // May 22
+        { q: "Ms. Pac-Man Release (Year)", a: 1982, clue: "More popular than the original.", month: 1, day: 3 }, // Feb 3
+        { q: "Pong Release (Year)", a: 1972, clue: "The first commercially successful arcade game.", month: 10, day: 29 }, // Nov 29
+        { q: "Space Invaders Release (Year)", a: 1978, clue: "It caused a 100-yen coin shortage in Japan.", month: 5, day: 15 }, // June 15 (approx)
+        { q: "Tetris Created (Year)", a: 1984, clue: "From Russia with Love.", month: 5, day: 6 }, // June 6
+        { q: "Legend of Zelda Release (Year)", a: 1986, clue: "It's dangerous to go alone.", month: 1, day: 21 }, // Feb 21
+        { q: "Doom Release (Year)", a: 1993, clue: "RIP AND TEAR.", month: 11, day: 10 }, // Dec 10
         { q: "Super Mario 64 Release (Year)", a: 1996, clue: "Welcome to the 3rd dimension.", month: 5, day: 23 }, // June 23
         { q: "First iPhone Release (Year)", a: 2007, clue: "This changed everything.", month: 5, day: 29 }, // June 29
         { q: "Y2K Bug Scare (Year)", a: 2000, clue: "The computers might crash.", month: 0, day: 1 }, // Jan 1

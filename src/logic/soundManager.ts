@@ -1,8 +1,9 @@
 import { Audio } from 'expo-av';
 
 // Map specific sound names to require() paths
-// Since we don't have assets yet, these are placeholders
-const SOUND_ASSETS = {
+// Since we don't have assets yet, these are placeholders.
+// UNCOMMENT and fill path when you have files.
+const SOUND_ASSETS: Record<string, any> = {
     // 'keypress': require('../../assets/sounds/key_press.wav'),
     // 'success': require('../../assets/sounds/success.wav'),
     // 'error': require('../../assets/sounds/error.wav'),
@@ -10,28 +11,53 @@ const SOUND_ASSETS = {
     // 'door': require('../../assets/sounds/door_servo.wav'),
 };
 
+export type SoundKey = keyof typeof SOUND_ASSETS;
+
 class SoundManager {
-    sounds: Record<string, Audio.Sound> = {};
+    private sounds: Record<string, Audio.Sound> = {};
+    private isMuted: boolean = false;
 
     async loadSounds() {
-        // Preload sounds here if assets existed
+        try {
+            // Preload all assets
+            const loadPromises = Object.keys(SOUND_ASSETS).map(async (key) => {
+                const { sound } = await Audio.Sound.createAsync(SOUND_ASSETS[key]);
+                this.sounds[key] = sound;
+            });
+            await Promise.all(loadPromises);
+        } catch (error) {
+            console.warn('[SoundManager] Error loading sounds:', error);
+        }
     }
 
     async play(soundName: string) {
-        // If we had assets:
-        /*
-        const source = SOUND_ASSETS[soundName];
-        if (!source) return;
-        
-        try {
-            const { sound } = await Audio.Sound.createAsync(source);
-            await sound.playAsync();
-            // Cleanup after play (or keep loaded for efficiency if commonly used)
-        } catch (error) {
-            console.log("Error playing sound:", error);
+        if (this.isMuted) return;
+
+        const sound = this.sounds[soundName];
+        if (sound) {
+            try {
+                await sound.replayAsync();
+            } catch (error) {
+                console.log(`[SoundManager] Error playing ${soundName}:`, error);
+            }
+        } else {
+            console.log(`[SoundManager] Placeholder Play: ${soundName} (No Asset)`);
         }
-        */
-        console.log(`[SoundManager] Paying sound: ${soundName}`);
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        return this.isMuted;
+    }
+
+    async unloadAll() {
+        try {
+            const unloadPromises = Object.values(this.sounds).map(sound => sound.unloadAsync());
+            await Promise.all(unloadPromises);
+            this.sounds = {};
+        } catch (error) {
+            console.warn('[SoundManager] Error unloading sounds:', error);
+        }
     }
 }
 

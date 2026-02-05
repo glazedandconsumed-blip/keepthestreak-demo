@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import PixelIcon from '../components/PixelIcon';
+import { iapManager } from '../logic/iapManager';
 
-export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboard, onTimeAttack, onZenMode, streak, lives, credits, isPro, onUnlockPro }) => {
+export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboard, onTimeAttack, onZenMode, streak, lives, credits, isPro }) => {
     // Pulse animation for "PRESS START"
     const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -22,6 +23,14 @@ export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboa
             ])
         ).start();
     }, [pulseAnim]);
+
+    const handleUnlockPro = async () => {
+        await iapManager.purchasePro();
+    };
+
+    const handleRestorePurchases = async () => {
+        await iapManager.restorePurchases();
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -69,7 +78,7 @@ export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboa
 
                 {/* Pro Modes */}
                 <TouchableOpacity
-                    onPress={isPro ? onTimeAttack : onUnlockPro}
+                    onPress={isPro ? onTimeAttack : handleUnlockPro}
                     style={[styles.menuButton, theme.buttonStyle, !isPro && styles.lockedButton]}
                 >
                     <Text style={[styles.menuText, { color: isPro ? theme.textSecondary : '#555', fontFamily: theme.fontFamily }]}>
@@ -77,7 +86,7 @@ export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboa
                     </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                    onPress={isPro ? onZenMode : onUnlockPro}
+                    onPress={isPro ? onZenMode : handleUnlockPro}
                     style={[styles.menuButton, theme.buttonStyle, !isPro && styles.lockedButton]}
                 >
                     <Text style={[styles.menuText, { color: isPro ? theme.textSecondary : '#555', fontFamily: theme.fontFamily }]}>
@@ -87,11 +96,19 @@ export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboa
 
                 {/* Unlock Pro Button */}
                 {!isPro && (
-                    <TouchableOpacity onPress={onUnlockPro} style={[styles.menuButton, { borderColor: theme.accent, backgroundColor: 'rgba(255,215,0,0.1)' }]}>
-                        <Text style={[styles.menuText, { color: theme.accent, fontFamily: theme.fontFamily }]}>
-                            UNLOCK PRO VERSION
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={{ alignItems: 'center', width: '100%' }}>
+                        <TouchableOpacity onPress={handleUnlockPro} style={[styles.menuButton, { borderColor: theme.accent, backgroundColor: 'rgba(255,215,0,0.1)', width: '100%' }]}>
+                            <Text style={[styles.menuText, { color: theme.accent, fontFamily: theme.fontFamily }]}>
+                                UNLOCK PRO VERSION
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={handleRestorePurchases} style={{ marginTop: 15 }}>
+                            <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily, fontSize: 10, textDecorationLine: 'underline' }}>
+                                Restore Purchases
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 )}
 
                 {/* Artifacts */}

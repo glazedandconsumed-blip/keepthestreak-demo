@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, Dimensions } from 'react-native';
 import PixelIcon from '../components/PixelIcon';
 import { useGameStore } from '../store/gameStore';
 
@@ -17,6 +17,20 @@ export const LeaderboardScreen = ({ theme, onBack }) => {
         { rank: 7, name: "PIXEL_RAT", score: 42, failures: 12 },
         { rank: 8, name: "NOKIA_SNAKE", score: 33, failures: 0 },
     ].sort((a, b) => b.score - a.score);
+
+    // Animation Refs for rows
+    const fadeAnims = useRef(MOCK_LEADERS.map(() => new Animated.Value(0))).current;
+
+    useEffect(() => {
+        // Staggered fade in
+        Animated.stagger(100, fadeAnims.map(anim =>
+            Animated.timing(anim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true
+            })
+        )).start();
+    }, []);
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -63,9 +77,18 @@ export const LeaderboardScreen = ({ theme, onBack }) => {
                     </View>
 
                     {MOCK_LEADERS.map((item, index) => (
-                        <View key={index} style={[
+                        <Animated.View key={index} style={[
                             styles.tableRow,
-                            item.highlight && { backgroundColor: 'rgba(0, 255, 0, 0.1)' }
+                            item.highlight && { backgroundColor: 'rgba(0, 255, 0, 0.1)' },
+                            {
+                                opacity: fadeAnims[index],
+                                transform: [{
+                                    translateY: fadeAnims[index].interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [20, 0]
+                                    })
+                                }]
+                            }
                         ]}>
                             <Text style={[styles.colRank, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
                                 {index + 1}
@@ -88,7 +111,7 @@ export const LeaderboardScreen = ({ theme, onBack }) => {
                             <Text style={[styles.colScore, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
                                 {item.score}
                             </Text>
-                        </View>
+                        </Animated.View>
                     ))}
                 </View>
             </ScrollView>
