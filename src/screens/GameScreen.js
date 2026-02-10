@@ -18,8 +18,15 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
     // Check what consumables player has
     const hasHintToken = inventory.includes('hint_token');
     const hasEasyMode = inventory.includes('easy_mode');
-    const hasMemoryJog = inventory.includes('memory_jog');
-    const hasAnyConsumable = hasHintToken || hasEasyMode || hasMemoryJog;
+    const hasBypass = inventory.includes('bypass_protocol');
+    const hasAnyConsumable = hasHintToken || hasEasyMode || hasBypass;
+
+    // Opening Line (Design Lock)
+    useEffect(() => {
+        if (!bitDialogue && !challenge?.clue) {
+            setBitDialogue("System online. Maintenance required.");
+        }
+    }, []);
 
     useEffect(() => {
         // Boss Stage every 10 levels = VAULT
@@ -96,12 +103,35 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
         }
     };
 
-    const handleUseMemoryJog = () => {
-        if (!hasMemoryJog || !useConsumable) return;
-        const result = useConsumable('memory_jog');
+    const handleUseBypass = () => {
+        if (!hasBypass || !useConsumable) return;
+        const result = useConsumable('bypass_protocol');
         if (result.success) {
             HapticPatterns.unlock();
-            setBitDialogue(`Wait, I remember! Yesterday's number was ${lastAnswer || 1}. Don't forget it!`);
+            // We do NOT reveal the answer. We bypass the dependency.
+            setBitDialogue(`I bypassed the dependency. This is a workaround, not a fix.`);
+            // Force a simple solvable state or flag to auto-solve? 
+            // Design says "Bypass... dependency on yesterday's answer".
+            // Simplest implementation: Change the equation to something standalone that gives the SAME solution so streak continues?
+            // OR auto-fill?
+            // "Events enable Bit to Bypass"
+            // Let's make it auto-fill "BYPASS" in the terminal effectively, or just alert user to type "0" or something?
+            // Better: Just reveal the solution? NO. "Failure to remember".
+            // If they use bypass, maybe we just give them the point?
+            // "The system is temporarily stabilized via intervention"
+            // Let's treat it as an instant win for this day but with a specific message.
+            incrementStreak(challenge.solution);
+            setAlertConfig({
+                visible: true,
+                title: "BYPASS ACTIVE",
+                message: "Protocol accepted. Memory debt increased.",
+                type: 'warning',
+                onConfirm: () => {
+                    setAlertConfig(prev => ({ ...prev, visible: false }));
+                    // Logic to move next is handled by incrementStreak usually trigger screens
+                    // But here we might need to manually trigger onNext or allow the incrementStreak callback to handle it
+                }
+            });
         }
     };
 
@@ -177,8 +207,8 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
                     <View style={[styles.consumableToolbar, { borderColor: theme.textSecondary }]}>
                         <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily, fontSize: 8, marginRight: 10 }}>ASSISTS:</Text>
 
-                        {hasMemoryJog && (
-                            <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseMemoryJog}>
+                        {hasBypass && (
+                            <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseBypass}>
                                 <PixelIcon name="memory" size={14} />
                             </TouchableOpacity>
                         )}

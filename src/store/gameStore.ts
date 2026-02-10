@@ -134,7 +134,7 @@ export const useGameStore = create<GameState>()(
                         return { success: true, effect: 'STREAK PROTECTED' };
                     case 'hint_token': return { success: true, effect: 'HINT_REVEAL' };
                     case 'easy_mode': return { success: true, effect: 'EASY_MODE' };
-                    case 'memory_jog': return { success: true, effect: 'MEMORY_JOG' };
+                    case 'bypass_protocol': return { success: true, effect: 'DEPENDENCY_BYPASSED' };
                     default: return { success: false };
                 }
             },
