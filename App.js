@@ -3,7 +3,8 @@ import { StyleSheet, View, SafeAreaView, Text } from 'react-native';
 import React from 'react';
 const { useState, useEffect } = React;
 import { useGameStore } from './src/store/gameStore';
-import { ERAS, getEraForStreak } from './src/styles/themeEngine';
+import { ERAS, getEraForStreak, getNextEraInfo } from './src/styles/themeEngine';
+import { DROID_CHASSIS, getUnlockedDroids } from './src/data/droidData';
 import * as Font from 'expo-font';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { Silkscreen_400Regular } from '@expo-google-fonts/silkscreen';
@@ -57,7 +58,8 @@ export default function App() {
 
 
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState('HOME'); // HOME, GAME, TROPHIES
+  const [currentScreen, setCurrentScreen] = useState('HOME');
+  const [selectedDroid, setSelectedDroid] = useState('box-orb');
 
   // Alert State (Global)
   const [alertConfig, setAlertConfig] = useState({ visible: false, title: '', message: '', type: 'info', onConfirm: () => { } });
@@ -127,11 +129,16 @@ export default function App() {
         return (
           <HomeScreen
             theme={theme}
+            era={currentEra}
             streak={streak}
             lives={lives}
             credits={credits}
             isPro={isPro}
-            onStartGame={() => setCurrentScreen('MAP')}
+            selectedDroid={selectedDroid}
+            onSelectDroid={(droidId) => {
+              setSelectedDroid(droidId);
+              setCurrentScreen('MAP');
+            }}
             onShowTrophies={() => setCurrentScreen('TROPHIES')}
             onShowLeaderboard={() => setCurrentScreen('LEADERBOARD')}
             onTimeAttack={() => setCurrentScreen('TIME_ATTACK')}
@@ -142,8 +149,11 @@ export default function App() {
         return (
           <LevelMapScreen
             theme={theme}
+            era={currentEra}
             mode="STORY"
             streak={streak}
+            selectedDroid={selectedDroid}
+            nextEra={getNextEraInfo(streak)}
             onLevelSelect={() => setCurrentScreen('GAME')}
             onBack={() => setCurrentScreen('HOME')}
           />
@@ -152,6 +162,7 @@ export default function App() {
         return (
           <GameScreen
             theme={theme}
+            era={currentEra}
             streak={streak}
             lives={lives}
             credits={credits}
@@ -164,6 +175,8 @@ export default function App() {
             inventory={inventory}
             useConsumable={useConsumable}
             addItem={addItem}
+            selectedDroid={selectedDroid}
+            nextEra={getNextEraInfo(streak)}
             onBack={() => setCurrentScreen('HOME')}
           />
         );
@@ -227,7 +240,7 @@ export default function App() {
         type={alertConfig.type}
       />
 
-      <StatusBar style={currentEra === '128-bit' ? "light" : "auto"} />
+      <StatusBar style={currentEra === 'gameboy' ? "dark" : "light"} />
       <CRTEffect {...theme.crtConfig} />
 
       {/* Development Tracker */}

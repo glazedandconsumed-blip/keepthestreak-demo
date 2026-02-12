@@ -1,28 +1,18 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
-import PixelIcon from '../components/PixelIcon';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
+import DroidPixelArt from '../components/DroidPixelArt';
+import { DROID_CHASSIS, getUnlockedDroids, getUnlockCountText } from '../data/droidData';
+import { ERAS } from '../styles/themeEngine';
 import { iapManager } from '../logic/iapManager';
 
-export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboard, onTimeAttack, onZenMode, streak, lives, credits, isPro }) => {
-    // Pulse animation for "PRESS START"
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-
-    useEffect(() => {
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 0.2, // Fade out
-                    duration: 800,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1, // Fade in
-                    duration: 800,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
-    }, [pulseAnim]);
+export const HomeScreen = ({
+    theme, era, streak, lives, credits, isPro,
+    selectedDroid, onSelectDroid,
+    onShowTrophies, onShowLeaderboard, onTimeAttack, onZenMode
+}) => {
+    const [showCollection, setShowCollection] = useState(false);
+    const unlockedDroids = getUnlockedDroids(streak);
+    const fs = theme.fontSizeScale;
 
     const handleUnlockPro = async () => {
         await iapManager.purchasePro();
@@ -34,173 +24,499 @@ export const HomeScreen = ({ theme, onStartGame, onShowTrophies, onShowLeaderboa
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {/* Retro Banner / Header */}
-            <View style={styles.titleContainer}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                    <PixelIcon name="bit" size={64} style={{ marginRight: 15 }} />
-                    <PixelIcon name="streak" size={64} />
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header Title */}
+                <View style={styles.titleContainer}>
+                    <Text style={[styles.title, {
+                        color: theme.textPrimary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 22 * fs,
+                    }]}>
+                        MATH STREAK
+                    </Text>
+                    <Text style={[styles.title, {
+                        color: theme.accent,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 22 * fs,
+                    }]}>
+                        MECHANIC
+                    </Text>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 10 * fs,
+                        marginTop: 8,
+                        letterSpacing: 2,
+                    }}>
+                        {theme.eraDisplayName} ERA
+                    </Text>
                 </View>
 
-                <Text style={[styles.title, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
-                    MATH
-                </Text>
-                <Text style={[styles.title, { color: theme.accent, fontFamily: theme.fontFamily }]}>
-                    STREAK
-                </Text>
-            </View>
+                {/* Droid Selection Section */}
+                <View style={styles.sectionContainer}>
+                    <Text style={[styles.sectionTitle, {
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 10 * fs,
+                    }]}>
+                        SELECT MAINTENANCE DROID
+                    </Text>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 8 * fs,
+                        opacity: 0.7,
+                        marginTop: 4,
+                        textAlign: 'center',
+                    }}>
+                        Your companion will evolve with the system
+                    </Text>
+                </View>
 
-            {/* Stats Preview */}
-            <View style={[styles.statsRow, { borderColor: theme.textSecondary }]}>
-                <View style={styles.statItem}>
-                    <PixelIcon name="streak" size={24} />
-                    <Text style={[styles.statValue, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>{streak}</Text>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>DAYS</Text>
-                </View>
-                <View style={styles.statItem}>
-                    <PixelIcon name="heart" size={24} />
-                    <Text style={[styles.statValue, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>{lives}</Text>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>LIVES</Text>
-                </View>
-                <View style={styles.statItem}>
-                    <PixelIcon name="currency" size={24} />
-                    <Text style={[styles.statValue, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>{credits}</Text>
-                    <Text style={[styles.statLabel, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>BITS</Text>
-                </View>
-            </View>
+                {/* Droid Cards - Show only unlocked */}
+                <View style={styles.droidList}>
+                    {unlockedDroids.map(droidId => {
+                        const droid = DROID_CHASSIS[droidId];
+                        const isSelected = selectedDroid === droidId;
 
-            {/* Main Action - Game Modes */}
-            <View style={styles.menuContainer}>
-                <TouchableOpacity onPress={onStartGame} style={[styles.menuButton, theme.buttonStyle]}>
-                    <Text style={[styles.menuText, { color: theme.accent, fontFamily: theme.fontFamily }]}>
-                        CONTINUE STREAK
+                        return (
+                            <TouchableOpacity
+                                key={droidId}
+                                style={[
+                                    styles.droidCard,
+                                    theme.cardStyle,
+                                    isSelected && {
+                                        borderColor: theme.accent,
+                                        borderWidth: (theme.cardStyle.borderWidth || 1) + 1,
+                                    },
+                                ]}
+                                onPress={() => onSelectDroid(droidId)}
+                                activeOpacity={0.7}
+                            >
+                                <View style={styles.droidCardInner}>
+                                    <DroidPixelArt
+                                        droidId={droidId}
+                                        theme={theme}
+                                        size={56}
+                                    />
+                                    <View style={styles.droidInfo}>
+                                        <Text style={{
+                                            color: theme.textPrimary,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 10 * fs,
+                                            marginBottom: 4,
+                                        }}>
+                                            {droid.name}
+                                        </Text>
+                                        <Text style={{
+                                            color: theme.textSecondary,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 7 * fs,
+                                            lineHeight: 12 * fs,
+                                        }}>
+                                            {droid.description}
+                                        </Text>
+                                        <View style={styles.traitRow}>
+                                            {droid.traits.map(trait => (
+                                                <View key={trait} style={[styles.traitBadge, {
+                                                    borderColor: theme.accent,
+                                                    borderWidth: theme.cardStyle.borderWidth || 1,
+                                                    borderRadius: theme.cardStyle.borderRadius || 0,
+                                                }]}>
+                                                    <Text style={{
+                                                        color: theme.accent,
+                                                        fontFamily: theme.fontFamily,
+                                                        fontSize: 5 * fs,
+                                                    }}>
+                                                        {trait}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                </View>
+                                {isSelected && (
+                                    <View style={[styles.activeBadge, { backgroundColor: theme.accent }]}>
+                                        <Text style={{
+                                            color: theme.background,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 5 * fs,
+                                        }}>
+                                            ACTIVE
+                                        </Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                {/* View All Droids Button */}
+                <TouchableOpacity
+                    style={[styles.collectionButton, theme.buttonStyle]}
+                    onPress={() => setShowCollection(true)}
+                >
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 9 * fs,
+                        textAlign: 'center',
+                    }}>
+                        ⊕ VIEW ALL DROIDS
+                    </Text>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                        opacity: 0.6,
+                        marginTop: 4,
+                        textAlign: 'center',
+                    }}>
+                        {getUnlockCountText(streak)}
                     </Text>
                 </TouchableOpacity>
+
+                {/* Secondary Actions */}
+                <View style={styles.secondaryActions}>
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, theme.buttonStyle]}
+                        onPress={onShowTrophies}
+                    >
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            ARTIFACTS DB
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, theme.buttonStyle]}
+                        onPress={onShowLeaderboard}
+                    >
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            HIGH SCORES
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Pro Modes */}
-                <TouchableOpacity
-                    onPress={isPro ? onTimeAttack : handleUnlockPro}
-                    style={[styles.menuButton, theme.buttonStyle, !isPro && styles.lockedButton]}
-                >
-                    <Text style={[styles.menuText, { color: isPro ? theme.textSecondary : '#555', fontFamily: theme.fontFamily }]}>
-                        {isPro ? "TIME ATTACK" : "TIME ATTACK [LOCKED]"}
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={isPro ? onZenMode : handleUnlockPro}
-                    style={[styles.menuButton, theme.buttonStyle, !isPro && styles.lockedButton]}
-                >
-                    <Text style={[styles.menuText, { color: isPro ? theme.textSecondary : '#555', fontFamily: theme.fontFamily }]}>
-                        {isPro ? "ZEN MODE" : "ZEN MODE [LOCKED]"}
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Unlock Pro Button */}
                 {!isPro && (
-                    <View style={{ alignItems: 'center', width: '100%' }}>
-                        <TouchableOpacity onPress={handleUnlockPro} style={[styles.menuButton, { borderColor: theme.accent, backgroundColor: 'rgba(255,215,0,0.1)', width: '100%' }]}>
-                            <Text style={[styles.menuText, { color: theme.accent, fontFamily: theme.fontFamily }]}>
+                    <View style={styles.proSection}>
+                        <TouchableOpacity
+                            onPress={handleUnlockPro}
+                            style={[styles.proButton, {
+                                borderColor: theme.accent,
+                                backgroundColor: 'rgba(255,215,0,0.05)',
+                                borderWidth: theme.cardStyle.borderWidth || 1,
+                                borderRadius: theme.cardStyle.borderRadius || 0,
+                            }]}
+                        >
+                            <Text style={{
+                                color: theme.accent,
+                                fontFamily: theme.fontFamily,
+                                fontSize: 8 * fs,
+                            }}>
                                 UNLOCK PRO VERSION
                             </Text>
                         </TouchableOpacity>
-
-                        <TouchableOpacity onPress={handleRestorePurchases} style={{ marginTop: 15 }}>
-                            <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily, fontSize: 10, textDecorationLine: 'underline' }}>
+                        <TouchableOpacity onPress={handleRestorePurchases} style={{ marginTop: 8 }}>
+                            <Text style={{
+                                color: theme.textSecondary,
+                                fontFamily: theme.fontFamily,
+                                fontSize: 7 * fs,
+                                textDecorationLine: 'underline',
+                                opacity: 0.5,
+                            }}>
                                 Restore Purchases
                             </Text>
                         </TouchableOpacity>
                     </View>
                 )}
+            </ScrollView>
 
-                {/* Artifacts */}
-                <TouchableOpacity style={[styles.menuButton, theme.buttonStyle]} onPress={onShowTrophies}>
-                    <Text style={[styles.menuText, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
-                        ARTIFACTS DB
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Leaderboard */}
-                <TouchableOpacity style={[styles.menuButton, theme.buttonStyle]} onPress={onShowLeaderboard}>
-                    <Text style={[styles.menuText, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>
-                        HIGH SCORES
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
+            {/* Footer */}
             <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>
-                    © 2026 DEEPMIND CORP
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 7 * fs,
+                    opacity: 0.5,
+                }}>
+                    ● {theme.footerText}
                 </Text>
             </View>
+
+            {/* Droid Collection Modal */}
+            <DroidCollectionModal
+                visible={showCollection}
+                onClose={() => setShowCollection(false)}
+                theme={theme}
+                streak={streak}
+                selectedDroid={selectedDroid}
+                onSelectDroid={onSelectDroid}
+            />
         </View>
+    );
+};
+
+// ─── Inline Droid Collection Modal ───────────────────────────────────────
+const DroidCollectionModal = ({ visible, onClose, theme, streak, selectedDroid, onSelectDroid }) => {
+    const fs = theme.fontSizeScale;
+    const allDroidIds = Object.keys(DROID_CHASSIS);
+    const unlockedDroids = getUnlockedDroids(streak);
+
+    return (
+        <Modal visible={visible} animationType="slide" transparent>
+            <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.85)' }]}>
+                <View style={[styles.modalContent, {
+                    backgroundColor: theme.background,
+                    borderColor: theme.accent,
+                    borderWidth: theme.cardStyle.borderWidth || 1,
+                    borderRadius: theme.cardStyle.borderRadius || 0,
+                }]}>
+                    {/* Modal Header */}
+                    <View style={styles.modalHeader}>
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 11 * fs,
+                        }}>
+                            DROID COLLECTION
+                        </Text>
+                        <Text style={{
+                            color: theme.textSecondary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 7 * fs,
+                            marginTop: 4,
+                        }}>
+                            Streak: {streak} • {getUnlockCountText(streak)}
+                        </Text>
+                    </View>
+
+                    {/* Droid Grid */}
+                    <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+                        <View style={styles.droidGrid}>
+                            {allDroidIds.map(droidId => {
+                                const droid = DROID_CHASSIS[droidId];
+                                const isUnlocked = unlockedDroids.includes(droidId);
+                                const isActive = selectedDroid === droidId;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={droidId}
+                                        style={[styles.gridCell, theme.cardStyle, {
+                                            opacity: isUnlocked ? 1 : 0.5,
+                                        }]}
+                                        onPress={() => {
+                                            if (isUnlocked) {
+                                                onSelectDroid(droidId);
+                                                onClose();
+                                            }
+                                        }}
+                                        activeOpacity={isUnlocked ? 0.7 : 1}
+                                        disabled={!isUnlocked}
+                                    >
+                                        <DroidPixelArt
+                                            droidId={droidId}
+                                            theme={theme}
+                                            size={48}
+                                            locked={!isUnlocked}
+                                        />
+                                        <Text style={{
+                                            color: isUnlocked ? theme.textPrimary : theme.textSecondary,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 6 * fs,
+                                            textAlign: 'center',
+                                            marginTop: 6,
+                                        }} numberOfLines={2}>
+                                            {isUnlocked ? droid.name : '???'}
+                                        </Text>
+                                        {isUnlocked ? (
+                                            <Text style={{
+                                                color: isActive ? theme.accent : theme.textSecondary,
+                                                fontFamily: theme.fontFamily,
+                                                fontSize: 5 * fs,
+                                                marginTop: 2,
+                                            }}>
+                                                {isActive ? 'ACTIVE' : 'UNLOCKED ✓'}
+                                            </Text>
+                                        ) : (
+                                            <Text style={{
+                                                color: theme.textSecondary,
+                                                fontFamily: theme.fontFamily,
+                                                fontSize: 5 * fs,
+                                                marginTop: 2,
+                                                opacity: 0.6,
+                                            }}>
+                                                🔒 STREAK {droid.unlockStreak}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </ScrollView>
+
+                    {/* Close Button */}
+                    <TouchableOpacity
+                        style={[styles.closeButton, theme.buttonStyle]}
+                        onPress={onClose}
+                    >
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            CLOSE
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+    },
+    scrollContent: {
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
+        paddingTop: 50,
+        paddingHorizontal: 20,
+        paddingBottom: 60,
     },
     titleContainer: {
         alignItems: 'center',
-        marginBottom: 60,
+        marginBottom: 30,
     },
     title: {
-        fontSize: 48,
-        lineHeight: 56,
         textAlign: 'center',
+        lineHeight: 32,
     },
-    statsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        maxWidth: 320,
-        padding: 20,
-        borderWidth: 2,
-        borderRadius: 10,
-        marginBottom: 60,
-        backgroundColor: 'rgba(0,0,0,0.2)'
-    },
-    statItem: {
+    sectionContainer: {
         alignItems: 'center',
+        marginBottom: 16,
     },
-    statValue: {
-        fontSize: 24,
-        marginTop: 5,
-    },
-    statLabel: {
-        fontSize: 10,
-        marginTop: 2,
-    },
-    startArea: {
-        marginBottom: 40,
-        padding: 20,
-    },
-    pressStart: {
-        fontSize: 24,
+    sectionTitle: {
         letterSpacing: 2,
     },
-    menuContainer: {
+    droidList: {
         width: '100%',
-        maxWidth: 250,
-        gap: 15,
+        maxWidth: 340,
+        gap: 12,
+        marginBottom: 16,
     },
-    menuButton: {
-        padding: 15,
-        borderRadius: 8,
+    droidCard: {
+        padding: 14,
+        position: 'relative',
+    },
+    droidCardInner: {
+        flexDirection: 'row',
         alignItems: 'center',
-        borderWidth: 2,
+        gap: 14,
     },
-    menuText: {
-        fontSize: 16,
+    droidInfo: {
+        flex: 1,
+    },
+    traitRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+        marginTop: 6,
+    },
+    traitBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+    },
+    activeBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+    },
+    collectionButton: {
+        width: '100%',
+        maxWidth: 340,
+        padding: 14,
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    secondaryActions: {
+        width: '100%',
+        maxWidth: 340,
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 16,
+    },
+    secondaryButton: {
+        flex: 1,
+        padding: 12,
+        alignItems: 'center',
+    },
+    proSection: {
+        alignItems: 'center',
+        marginTop: 8,
+        width: '100%',
+        maxWidth: 340,
+    },
+    proButton: {
+        width: '100%',
+        padding: 12,
+        alignItems: 'center',
     },
     footer: {
         position: 'absolute',
-        bottom: 20,
+        bottom: 12,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
     },
-    footerText: {
-        fontSize: 10,
-        opacity: 0.5,
-    }
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        width: '100%',
+        maxWidth: 380,
+        maxHeight: '85%',
+        padding: 20,
+    },
+    modalHeader: {
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalScroll: {
+        flex: 1,
+    },
+    droidGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 10,
+        justifyContent: 'center',
+    },
+    gridCell: {
+        width: '30%',
+        minWidth: 95,
+        padding: 10,
+        alignItems: 'center',
+    },
+    closeButton: {
+        marginTop: 16,
+        padding: 12,
+        alignItems: 'center',
+    },
 });

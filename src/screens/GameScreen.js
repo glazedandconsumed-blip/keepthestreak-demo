@@ -1,54 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, AppState } from 'react-native';
 import { SecurityTerminal } from '../components/SecurityTerminal';
-import PixelIcon from '../components/PixelIcon';
+import DroidPixelArt from '../components/DroidPixelArt';
 import { generateDailyChallenge } from '../logic/equationGenerator';
+import { DROID_CHASSIS, DROID_DIALOG } from '../data/droidData';
+import { ERAS, getNextEraInfo } from '../styles/themeEngine';
 import { HapticPatterns } from '../logic/haptics';
+import PixelIcon from '../components/PixelIcon';
 
-export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnswer, loseLife, incrementStreak, setAlertConfig, latestUnlock, onBack, inventory = [], useConsumable, addItem }) => {
-    // Local state for the specific challenge
+export const GameScreen = ({
+    theme, era, streak, lives, credits, currentDay, lastAnswer,
+    loseLife, incrementStreak, setAlertConfig, latestUnlock,
+    onBack, inventory = [], useConsumable, addItem,
+    selectedDroid, nextEra
+}) => {
+    // Game phases: DASHBOARD → CHALLENGE → DEFERRED
+    const [phase, setPhase] = useState('DASHBOARD');
     const [challenge, setChallenge] = useState(null);
-    // Variant Logic
-    const [terminalVariant, setTerminalVariant] = useState('PANEL');
-    // Active Bit dialogue (from consumables)
     const [bitDialogue, setBitDialogue] = useState(null);
-    // Easy mode flag for this round
     const [isEasyMode, setIsEasyMode] = useState(false);
 
-    // Check what consumables player has
+    const fs = theme.fontSizeScale;
+    const droid = DROID_CHASSIS[selectedDroid] || DROID_CHASSIS['box-orb'];
+
+    // Consumable checks
     const hasHintToken = inventory.includes('hint_token');
     const hasEasyMode = inventory.includes('easy_mode');
     const hasBypass = inventory.includes('bypass_protocol');
     const hasAnyConsumable = hasHintToken || hasEasyMode || hasBypass;
 
-    // Opening Line (Design Lock)
+    // Generate challenge
     useEffect(() => {
-        if (!bitDialogue && !challenge?.clue) {
-            setBitDialogue("System online. Maintenance required.");
-        }
-    }, []);
-
-    useEffect(() => {
-        // Boss Stage every 10 levels = VAULT
-        if (currentDay % 10 === 0) {
-            setTerminalVariant('VAULT');
-        } else {
-            // Scavenge Stage = Random Scrapyard Container
-            const variants = ['PANEL', 'CAR_HOOD', 'DUMPSTER', 'CRATE', 'LOCKER'];
-            setTerminalVariant(variants[Math.floor(Math.random() * variants.length)]);
-        }
-    }, [currentDay]);
-
-    // Reset consumable states when challenge changes
-    useEffect(() => {
-        setBitDialogue(null);
-        setIsEasyMode(false);
-    }, [challenge?.id]);
-
-    // Listen for Game Over or Win
-    useEffect(() => {
-        // GLITCH MECHANIC: Every 4th day is a DEBUG day
-        // GLITCH MECHANIC: Every 4th day is a DEBUG day, but only after Day 10
         const isGlitchDay = currentDay % 4 === 0 && currentDay > 10;
         let daily;
         if (isGlitchDay) {
@@ -60,28 +42,30 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
         setChallenge(daily);
     }, [currentDay, lastAnswer, streak, isEasyMode]);
 
-    // App State for Anti-Cheat (Psycho Mantis)
+    // Set initial droid dialog
+    useEffect(() => {
+        setBitDialogue(DROID_DIALOG.systemOnline(theme.eraDisplayName));
+    }, []);
+
+    // Anti-cheat (Psycho Mantis)
     useEffect(() => {
         const subscription = AppState.addEventListener('change', nextAppState => {
             if (nextAppState === 'active') {
-                // User came back from background
                 const snark = [
-                    "Bit: 'Welcome back. Find the answer on Google?'",
-                    "Bit: 'I see what you did there. Consulting the Oracle?'",
-                    "Bit: 'Your search history is being recorded. Just kidding.'",
-                    "Bit: 'Psycho Mantis is watching you cheat.'",
-                    "Bit: 'Did you just minimize me? Rude.'",
-                    "Bit: 'Cheat codes disabled. Nice try.'"
+                    `${droid.name}: 'Welcome back. Find the answer somewhere?'`,
+                    `${droid.name}: 'I see. Consulting external systems.'`,
+                    `${droid.name}: 'Cheat codes disabled. Nice try.'`,
                 ];
                 setBitDialogue(snark[Math.floor(Math.random() * snark.length)]);
                 HapticPatterns.error();
             }
         });
-
-        return () => {
-            subscription.remove();
-        };
+        return () => subscription.remove();
     }, []);
+
+    // Calculate system integrity (visual representation of streak health)
+    const maxIntegrity = 100;
+    const integrity = Math.min(maxIntegrity, Math.round((streak / (nextEra?.streakRequired || 90)) * 100));
 
     // Consumable handlers
     const handleUseHint = () => {
@@ -89,7 +73,7 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
         const result = useConsumable('hint_token');
         if (result.success) {
             HapticPatterns.unlock();
-            setBitDialogue(`Psst... I peeked at the answer. It's ${challenge?.solution}!`);
+            setBitDialogue(`Psst... the answer is ${challenge?.solution}.`);
         }
     };
 
@@ -99,7 +83,7 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
         if (result.success) {
             HapticPatterns.unlock();
             setIsEasyMode(true);
-            setBitDialogue("Debug mode activated! I've simplified the equation for you.");
+            setBitDialogue("Debug mode activated. Simplified.");
         }
     };
 
@@ -108,18 +92,6 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
         const result = useConsumable('bypass_protocol');
         if (result.success) {
             HapticPatterns.unlock();
-            // We do NOT reveal the answer. We bypass the dependency.
-            setBitDialogue(`I bypassed the dependency. This is a workaround, not a fix.`);
-            // Force a simple solvable state or flag to auto-solve? 
-            // Design says "Bypass... dependency on yesterday's answer".
-            // Simplest implementation: Change the equation to something standalone that gives the SAME solution so streak continues?
-            // OR auto-fill?
-            // "Events enable Bit to Bypass"
-            // Let's make it auto-fill "BYPASS" in the terminal effectively, or just alert user to type "0" or something?
-            // Better: Just reveal the solution? NO. "Failure to remember".
-            // If they use bypass, maybe we just give them the point?
-            // "The system is temporarily stabilized via intervention"
-            // Let's treat it as an instant win for this day but with a specific message.
             incrementStreak(challenge.solution);
             setAlertConfig({
                 visible: true,
@@ -128,25 +100,384 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
                 type: 'warning',
                 onConfirm: () => {
                     setAlertConfig(prev => ({ ...prev, visible: false }));
-                    // Logic to move next is handled by incrementStreak usually trigger screens
-                    // But here we might need to manually trigger onNext or allow the incrementStreak callback to handle it
                 }
             });
         }
     };
 
+    const handleMaintenanceFailed = () => {
+        setPhase('DEFERRED');
+        setBitDialogue(DROID_DIALOG.maintenanceDeferred());
+    };
+
+    // ─── DASHBOARD PHASE ────────────────────────────────────────────
+    const renderDashboard = () => (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Droid + Dialog */}
+            <View style={styles.droidSection}>
+                <DroidPixelArt
+                    droidId={selectedDroid}
+                    theme={theme}
+                    size={64}
+                />
+                <View style={[styles.dialogBubble, theme.cardStyle, { padding: 12 }]}>
+                    <Text style={{
+                        color: theme.textPrimary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 8 * fs,
+                        lineHeight: 14 * fs,
+                    }}>
+                        {droid.name} [{theme.eraDisplayName}]:
+                    </Text>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 8 * fs,
+                        lineHeight: 14 * fs,
+                        marginTop: 4,
+                    }}>
+                        "{bitDialogue}"
+                    </Text>
+                </View>
+            </View>
+
+            {/* System Status Card */}
+            <View style={[styles.statusCard, theme.cardStyle, { padding: 16 }]}>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                    letterSpacing: 2,
+                    marginBottom: 12,
+                }}>
+                    ✧ SYSTEM STATUS
+                </Text>
+
+                {/* Streak */}
+                <View style={styles.statusRow}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                    }}>
+                        MAINTENANCE STREAK
+                    </Text>
+                    <Text style={{
+                        color: theme.accent,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 14 * fs,
+                    }}>
+                        {streak} DAYS
+                    </Text>
+                </View>
+
+                {/* Integrity Bar */}
+                <View style={styles.statusRow}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                    }}>
+                        SYSTEM INTEGRITY
+                    </Text>
+                    <View style={styles.integrityBarContainer}>
+                        <View style={[styles.integrityBarBg, {
+                            borderColor: theme.textSecondary,
+                            borderWidth: theme.cardStyle.borderWidth || 1,
+                            borderRadius: theme.cardStyle.borderRadius || 0,
+                        }]}>
+                            <View style={[styles.integrityBarFill, {
+                                width: `${integrity}%`,
+                                backgroundColor: theme.accent,
+                                borderRadius: Math.max(0, (theme.cardStyle.borderRadius || 0) - 1),
+                            }]} />
+                        </View>
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 7 * fs,
+                            marginLeft: 8,
+                        }}>
+                            {integrity}%
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Stats */}
+                <View style={[styles.statusRow, { marginTop: 8 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <PixelIcon name="heart" size={14} />
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 8 * fs,
+                        }}>
+                            {lives}
+                        </Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <PixelIcon name="currency" size={14} />
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 8 * fs,
+                        }}>
+                            {credits}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Next Evolution */}
+            {nextEra && (
+                <View style={[styles.evolutionCard, theme.cardStyle, { padding: 14 }]}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                        letterSpacing: 1,
+                    }}>
+                        NEXT EVOLUTION
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                        <Text style={{
+                            color: theme.accent,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            {nextEra.name}
+                        </Text>
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            {nextEra.daysAway} DAYS
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {/* Consumable Toolbar */}
+            {hasAnyConsumable && (
+                <View style={[styles.consumableToolbar, {
+                    borderColor: theme.textSecondary,
+                    borderWidth: theme.cardStyle.borderWidth || 1,
+                    borderRadius: theme.cardStyle.borderRadius || 0,
+                }]}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 6 * fs,
+                        marginRight: 8,
+                    }}>
+                        ASSISTS:
+                    </Text>
+                    {hasBypass && (
+                        <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseBypass}>
+                            <PixelIcon name="memory" size={14} />
+                        </TouchableOpacity>
+                    )}
+                    {hasEasyMode && (
+                        <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseEasyMode}>
+                            <PixelIcon name="chip" size={14} />
+                        </TouchableOpacity>
+                    )}
+                    {hasHintToken && (
+                        <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseHint}>
+                            <PixelIcon name="key" size={14} />
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            {/* Begin Maintenance Button */}
+            <TouchableOpacity
+                onPress={() => {
+                    setPhase('CHALLENGE');
+                    setBitDialogue(DROID_DIALOG.waitingForInput());
+                }}
+                style={[styles.mainButton, theme.buttonStyle]}
+                activeOpacity={0.7}
+            >
+                <Text style={{
+                    color: theme.accent,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 11 * fs,
+                    letterSpacing: 1,
+                }}>
+                    BEGIN MAINTENANCE
+                </Text>
+            </TouchableOpacity>
+        </ScrollView>
+    );
+
+    // ─── CHALLENGE PHASE ────────────────────────────────────────────
+    const renderChallenge = () => (
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            {/* Equation Card */}
+            <View style={[styles.challengeCard, theme.cardStyle, {
+                padding: 24,
+            }, challenge?.isGlitch && styles.glitchCard, isEasyMode && styles.easyModeCard]}>
+                <Text style={{
+                    color: challenge?.isGlitch ? '#FF0000' : (isEasyMode ? '#00FF00' : theme.textSecondary),
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                    letterSpacing: 2,
+                    marginBottom: 12,
+                }}>
+                    {challenge?.isGlitch ? "SYSTEM FAILURE" : (isEasyMode ? "DEBUG MODE" : "TODAY'S MAINTENANCE")}
+                </Text>
+                <Text style={{
+                    color: challenge?.isGlitch ? '#FF0000' : theme.textPrimary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: (challenge?.isGlitch || (challenge?.equationText?.length > 15)) ? 16 * fs : 28 * fs,
+                    textAlign: 'center',
+                    lineHeight: (challenge?.isGlitch || (challenge?.equationText?.length > 15)) ? 24 * fs : 42 * fs,
+                }}>
+                    {challenge?.isGlitch ? challenge.brokenEquation : (challenge?.equationText || "Loading...")}
+                </Text>
+                {lastAnswer !== null && lastAnswer !== undefined && (
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                        marginTop: 8,
+                        opacity: 0.7,
+                    }}>
+                        (depends on yesterday's answer)
+                    </Text>
+                )}
+            </View>
+
+            {/* Droid Dialog */}
+            <View style={styles.challengeDroidRow}>
+                <DroidPixelArt
+                    droidId={selectedDroid}
+                    theme={theme}
+                    size={36}
+                />
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 7 * fs,
+                    marginLeft: 10,
+                    flex: 1,
+                    fontStyle: 'italic',
+                }}>
+                    "{bitDialogue}"
+                </Text>
+            </View>
+
+            {/* Security Terminal / Input */}
+            <SecurityTerminal
+                key={challenge?.id}
+                theme={theme}
+                correctSolution={challenge?.solution}
+                onUnlock={() => {
+                    const solution = challenge?.solution;
+                    if (solution !== undefined && solution !== null) {
+                        incrementStreak(solution);
+
+                        if (challenge.specialUnlock && addItem) {
+                            addItem(challenge.specialUnlock);
+                            HapticPatterns.unlock();
+                        }
+
+                        if (challenge.successMessage) {
+                            setAlertConfig({
+                                visible: true,
+                                title: challenge.specialUnlock ? "🎉 RARE FIND!" : "MAINTENANCE LOGGED",
+                                message: challenge.successMessage.replace("Bit: ", ""),
+                                type: 'achievement',
+                                onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false }))
+                            });
+                        }
+                        setBitDialogue(DROID_DIALOG.maintenanceComplete());
+                    }
+                }}
+                onMistake={() => {
+                    loseLife();
+                    if (lives <= 1) {
+                        handleMaintenanceFailed();
+                    }
+                }}
+                disabled={!challenge}
+            />
+        </ScrollView>
+    );
+
+    // ─── DEFERRED PHASE ─────────────────────────────────────────────
+    const renderDeferred = () => (
+        <View style={styles.deferredContainer}>
+            <View style={[styles.deferredCard, theme.cardStyle, { padding: 24, borderColor: theme.accent }]}>
+                <Text style={{
+                    color: theme.accent,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 12 * fs,
+                    textAlign: 'center',
+                    marginBottom: 12,
+                }}>
+                    ⚠ MAINTENANCE DEFERRED
+                </Text>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                    textAlign: 'center',
+                    lineHeight: 14 * fs,
+                }}>
+                    System degraded. The machine waits quietly.
+                </Text>
+            </View>
+
+            <View style={styles.deferredDroid}>
+                <DroidPixelArt
+                    droidId={selectedDroid}
+                    theme={theme}
+                    size={56}
+                />
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                    marginTop: 12,
+                    textAlign: 'center',
+                    fontStyle: 'italic',
+                    maxWidth: 260,
+                }}>
+                    "{DROID_DIALOG.maintenanceDeferred()}"
+                </Text>
+            </View>
+
+            <TouchableOpacity
+                onPress={onBack}
+                style={[styles.mainButton, theme.buttonStyle, { marginTop: 30 }]}
+                activeOpacity={0.7}
+            >
+                <Text style={{
+                    color: theme.textPrimary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 10 * fs,
+                }}>
+                    CONTINUE
+                </Text>
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
         <View style={[styles.gameArea, { backgroundColor: theme.background }]}>
-            {/* Nav Back */}
-            <View style={[styles.miniHeader, { borderBottomColor: theme.textSecondary }]}>
-                {/* MENU / DAY Combined */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
-                    <TouchableOpacity onPress={() => {
-                        HapticPatterns.softKey();
-                        // Custom Retro Alert for Pause
+            {/* Header */}
+            <View style={[styles.miniHeader, theme.headerStyle]}>
+                <TouchableOpacity onPress={() => {
+                    HapticPatterns.softKey();
+                    if (phase === 'CHALLENGE') {
+                        setPhase('DASHBOARD');
+                    } else {
                         setAlertConfig({
                             visible: true,
-                            title: "PAUSE SESSION",
+                            title: "ABORT SESSION",
                             message: "Return to main menu?",
                             type: 'warning',
                             onConfirm: () => {
@@ -154,130 +485,60 @@ export const GameScreen = ({ theme, streak, lives, credits, currentDay, lastAnsw
                                 onBack();
                             }
                         });
+                    }
+                }}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 10 * fs,
                     }}>
-                        <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily, fontSize: 12 }}>{"< MENU"}</Text>
-                    </TouchableOpacity>
+                        ← {phase === 'CHALLENGE' ? 'BACK' : 'MENU'}
+                    </Text>
+                </TouchableOpacity>
 
-                    <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily }}>DAY {currentDay}</Text>
-                </View>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                }}>
+                    DAY {currentDay}
+                </Text>
 
-                {/* Right Side Stats */}
                 <View style={styles.miniStats}>
-                    <PixelIcon name="heart" size={16} />
-                    <Text style={[styles.miniStatText, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>{lives}</Text>
-                    <View style={{ width: 10 }} />
-                    <PixelIcon name="streak" size={16} />
-                    <Text style={[styles.miniStatText, { color: theme.textPrimary, fontFamily: theme.fontFamily }]}>{streak}</Text>
+                    <PixelIcon name="heart" size={14} />
+                    <Text style={{
+                        color: theme.textPrimary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 9 * fs,
+                        marginLeft: 3,
+                    }}>{lives}</Text>
+                    <View style={{ width: 8 }} />
+                    <PixelIcon name="streak" size={14} />
+                    <Text style={{
+                        color: theme.textPrimary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 9 * fs,
+                        marginLeft: 3,
+                    }}>{streak}</Text>
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Title / Bit */}
-                <View style={styles.titleContainer}>
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginBottom: 10 }}>
-                        {/* Speech Bubble - Shows clue or consumable dialogue */}
-                        {(challenge?.clue || bitDialogue) && (
-                            <View style={[
-                                styles.speechBubble,
-                                {
-                                    borderColor: bitDialogue ? theme.accent : theme.textPrimary,
-                                    backgroundColor: theme.cardStyle.backgroundColor
-                                }
-                            ]}>
-                                <Text style={[styles.speechText, {
-                                    color: bitDialogue ? theme.accent : theme.textPrimary,
-                                    fontFamily: theme.fontFamily,
-                                    fontSize: 12 * theme.fontSizeScale
-                                }]}>
-                                    {bitDialogue || challenge?.clue?.replace("Bit: ", "")}
-                                </Text>
-                                <View style={[styles.bubbleArrow, {
-                                    borderTopColor: bitDialogue ? theme.accent : theme.textPrimary,
-                                    borderLeftColor: bitDialogue ? theme.accent : theme.textPrimary,
-                                    backgroundColor: theme.cardStyle.backgroundColor
-                                }]} />
-                            </View>
-                        )}
-                        <PixelIcon name="bit" size={48 * theme.fontSizeScale} />
-                    </View>
-                </View>
+            {/* Phase Content */}
+            {phase === 'DASHBOARD' && renderDashboard()}
+            {phase === 'CHALLENGE' && renderChallenge()}
+            {phase === 'DEFERRED' && renderDeferred()}
 
-                {/* Consumable Toolbar */}
-                {hasAnyConsumable && !bitDialogue && (
-                    <View style={[styles.consumableToolbar, { borderColor: theme.textSecondary }]}>
-                        <Text style={{ color: theme.textSecondary, fontFamily: theme.fontFamily, fontSize: 8, marginRight: 10 }}>ASSISTS:</Text>
-
-                        {hasBypass && (
-                            <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseBypass}>
-                                <PixelIcon name="memory" size={14} />
-                            </TouchableOpacity>
-                        )}
-                        {hasEasyMode && (
-                            <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseEasyMode}>
-                                <PixelIcon name="chip" size={14} />
-                            </TouchableOpacity>
-                        )}
-                        {hasHintToken && (
-                            <TouchableOpacity style={[styles.consumableBtn, { borderColor: theme.accent }]} onPress={handleUseHint}>
-                                <PixelIcon name="key" size={14} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                )}
-
-                {/* Equation Card */}
-                <View style={[styles.card, theme.cardStyle, challenge?.isGlitch && styles.glitchCard, isEasyMode && styles.easyModeCard]}>
-                    <Text style={[styles.equationLabel, {
-                        color: challenge?.isGlitch ? '#FF0000' : (isEasyMode ? '#00FF00' : theme.textSecondary),
-                        fontFamily: theme.fontFamily,
-                        fontSize: 14 * theme.fontSizeScale
-                    }]}>
-                        {challenge?.isGlitch ? "SYSTEM FAILURE" : (isEasyMode ? "DEBUG MODE:" : "TODAY'S CLUE:")}
-                    </Text>
-                    <Text style={[styles.equation, {
-                        color: challenge?.isGlitch ? '#FF0000' : theme.textPrimary,
-                        fontFamily: theme.fontFamily,
-                        fontSize: (challenge?.isGlitch || (challenge?.equationText?.length > 15)) ? 20 * theme.fontSizeScale : 36 * theme.fontSizeScale,
-                        lineHeight: (challenge?.isGlitch || (challenge?.equationText?.length > 15)) ? 30 * theme.fontSizeScale : 40 * theme.fontSizeScale * 1.5
-                    }]}>
-                        {challenge?.isGlitch ? challenge.brokenEquation : (challenge?.equationText || "Loading...")}
-                    </Text>
-                </View>
-
-                {/* Security Terminal */}
-                <SecurityTerminal
-                    key={challenge?.id} // Force remount on new day/challenge
-                    theme={theme}
-                    correctSolution={challenge?.solution}
-                    onUnlock={() => {
-                        const solution = challenge?.solution;
-                        console.log(`[GAME_SCREEN] onUnlock triggered. Solution: ${solution}`);
-                        if (solution !== undefined && solution !== null) {
-                            incrementStreak(solution);
-
-                            // Check for special easter egg unlocks
-                            if (challenge.specialUnlock && addItem) {
-                                // Add the rare item to inventory!
-                                addItem(challenge.specialUnlock);
-                                HapticPatterns.unlock();
-                            }
-
-                            // Show Bit's success message (with special title for easter eggs)
-                            if (challenge.successMessage) {
-                                setAlertConfig({
-                                    visible: true,
-                                    title: challenge.specialUnlock ? "🎉 RARE FIND!" : "MEMORY UPDATE",
-                                    message: challenge.successMessage.replace("Bit: ", ""),
-                                    type: 'achievement', // Use trophy/positive style
-                                    onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false }))
-                                });
-                            }
-                        }
-                    }}
-                    onMistake={loseLife}
-                    disabled={!challenge}
-                />
-            </ScrollView>
+            {/* Footer */}
+            <View style={styles.footer}>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 7 * fs,
+                    opacity: 0.5,
+                }}>
+                    ● {theme.footerText}
+                </Text>
+            </View>
         </View>
     );
 };
@@ -291,103 +552,130 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 15,
-        paddingTop: 50, // Safe area roughly
-        borderBottomWidth: 1,
+        paddingTop: 50,
         alignItems: 'center',
     },
     miniStats: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    miniStatText: {
-        marginLeft: 5,
-        fontSize: 16,
-    },
     scrollContent: {
         alignItems: 'center',
         padding: 20,
-        paddingBottom: 50,
+        paddingBottom: 60,
     },
-    titleContainer: {
-        flexDirection: 'column',
-        alignItems: 'center',
+    // Dashboard
+    droidSection: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
         marginBottom: 20,
-        marginTop: 10,
-    },
-    card: {
-        padding: 30,
-        borderRadius: 15,
         width: '100%',
+        maxWidth: 340,
+    },
+    dialogBubble: {
+        flex: 1,
+        marginLeft: 12,
+    },
+    statusCard: {
+        width: '100%',
+        maxWidth: 340,
+        marginBottom: 12,
+    },
+    statusRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 30,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
+        marginBottom: 8,
     },
-    glitchCard: {
-        borderColor: '#FF0000',
-        borderWidth: 2,
-        backgroundColor: '#110000',
+    integrityBarContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    equationLabel: {
-        fontSize: 14,
-        marginBottom: 10,
-        letterSpacing: 1,
+    integrityBarBg: {
+        width: 100,
+        height: 12,
+        overflow: 'hidden',
     },
-    equation: {
-        fontSize: 36,
-        fontWeight: 'bold',
-        textAlign: 'center',
+    integrityBarFill: {
+        height: '100%',
     },
-    speechBubble: {
-        padding: 10,
-        borderRadius: 8,
-        borderWidth: 2,
-        maxWidth: 200,
-        marginRight: 10,
-        marginBottom: 20,
-    },
-    speechText: {
-        fontSize: 12,
-        lineHeight: 16,
-    },
-    bubbleArrow: {
-        position: 'absolute',
-        bottom: -10,
-        right: 10,
-        width: 0,
-        height: 0,
-        borderLeftWidth: 10,
-        borderRightWidth: 10,
-        borderTopWidth: 10,
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
+    evolutionCard: {
+        width: '100%',
+        maxWidth: 340,
+        marginBottom: 12,
     },
     consumableToolbar: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 8,
-        borderWidth: 1,
-        borderRadius: 8,
-        marginBottom: 15,
+        marginBottom: 16,
         backgroundColor: 'rgba(0,0,0,0.3)',
+        width: '100%',
+        maxWidth: 340,
     },
     consumableBtn: {
         width: 32,
         height: 32,
         borderWidth: 1,
-        borderRadius: 6,
+        borderRadius: 4,
         marginHorizontal: 4,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(0,0,0,0.4)',
     },
+    mainButton: {
+        width: '100%',
+        maxWidth: 340,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    // Challenge
+    challengeCard: {
+        width: '100%',
+        maxWidth: 340,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    glitchCard: {
+        borderColor: '#FF0000',
+        borderWidth: 2,
+        backgroundColor: '#110000',
+    },
     easyModeCard: {
         borderColor: '#00FF00',
         borderWidth: 2,
         backgroundColor: '#001100',
+    },
+    challengeDroidRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        width: '100%',
+        maxWidth: 340,
+        paddingHorizontal: 4,
+    },
+    // Deferred
+    deferredContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    deferredCard: {
+        width: '100%',
+        maxWidth: 340,
+        marginBottom: 24,
+    },
+    deferredDroid: {
+        alignItems: 'center',
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 12,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
     },
 });

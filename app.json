@@ -25,7 +25,8 @@
       "package": "com.keepthestreak.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "baseUrl": "/keepthestreak-demo"
     },
     "plugins": [
       "expo-asset"

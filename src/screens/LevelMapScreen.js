@@ -1,139 +1,272 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Dimensions } from 'react-native';
-import PixelIcon from '../components/PixelIcon';
-import { HapticPatterns } from '../logic/haptics';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import DroidPixelArt from '../components/DroidPixelArt';
+import { ERAS, getEraForStreak } from '../styles/themeEngine';
+import { DROID_CHASSIS } from '../data/droidData';
 
-const { width } = Dimensions.get('window');
-const NODE_SIZE = 60;
-const PATH_HEIGHT = 4;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export const LevelMapScreen = ({ theme, mode, streak, onLevelSelect, onBack }) => {
-    const [currentNode, setCurrentNode] = useState(streak % 10); // Simple loop for now
-    const moveAnim = useRef(new Animated.Value(0)).current;
+export const LevelMapScreen = ({ theme, era, mode, streak, selectedDroid, nextEra, onLevelSelect, onBack }) => {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const fs = theme.fontSizeScale;
 
-    // Map Config based on Mode
-    const getMapTheme = () => {
-        switch (mode) {
-            case 'TIME_ATTACK': return {
-                type: 'CIRCUIT',
-                bg: '#110000',
-                path: '#FF0000',
-                nodeGeneric: '#550000',
-                nodeActive: '#FF4444'
-            };
-            case 'ZEN_MODE': return {
-                type: 'GARDEN',
-                bg: '#001122',
-                path: '#00AAAA',
-                nodeGeneric: '#004455',
-                nodeActive: '#00FFFF'
-            };
-            default: return {
-                type: 'WORLD',
-                bg: theme.background,
-                path: theme.textSecondary,
-                nodeGeneric: theme.textSecondary,
-                nodeActive: theme.accent
-            };
+    // Pulsing animation for "current" node
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 0.5,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, [pulseAnim]);
+
+    // Build progress nodes: show 7 nodes centered on current position
+    const buildNodes = () => {
+        const nodes = [];
+        const windowStart = Math.max(0, streak - 2);
+        const windowEnd = windowStart + 6;
+
+        // Era transition thresholds
+        const eraThresholds = [3, 7, 14, 21, 30, 45, 68, 90];
+
+        for (let i = windowStart; i <= windowEnd; i++) {
+            const isCompleted = i < streak;
+            const isCurrent = i === streak;
+            const isFuture = i > streak;
+            const isEraTransition = eraThresholds.includes(i);
+            const nodeEra = getEraForStreak(i);
+            const nodeTheme = ERAS[nodeEra];
+
+            nodes.push({
+                day: i,
+                isCompleted,
+                isCurrent,
+                isFuture,
+                isEraTransition,
+                eraName: isEraTransition ? nodeTheme.eraDisplayName : null,
+            });
         }
+        return nodes;
     };
 
-    const mapTheme = getMapTheme();
-
-    // Auto-advance animation on mount
-    useEffect(() => {
-        // Start "Previous" node
-        moveAnim.setValue(0);
-
-        const delay = setTimeout(() => {
-            HapticPatterns.doorOpen(); // "Step" sound
-            Animated.spring(moveAnim, {
-                toValue: 1,
-                friction: 6,
-                tension: 40,
-                useNativeDriver: true
-            }).start(() => {
-                HapticPatterns.unlock();
-            });
-        }, 500);
-
-        return () => clearTimeout(delay);
-    }, []);
-
-    // Generate Nodes (Window of 5)
-    // We'll show: [Prev] [Curr] [Next] [Next] [Boss?]
-    const nodes = [0, 1, 2, 3, 4].map(offset => streak + offset);
-
-    const translateX = moveAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, NODE_SIZE + 40] // Distance between nodes
-    });
+    const nodes = buildNodes();
+    const droid = DROID_CHASSIS[selectedDroid] || DROID_CHASSIS['box-orb'];
 
     return (
-        <View style={[styles.container, { backgroundColor: mapTheme.bg }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={onBack}>
-                    <Text style={[styles.backText, { color: theme.textSecondary, fontFamily: theme.fontFamily }]}>
-                        {"< ABORT"}
+            <View style={[styles.header, theme.headerStyle]}>
+                <TouchableOpacity onPress={onBack} style={styles.backButton}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 10 * fs,
+                    }}>
+                        ← BACK
                     </Text>
                 </TouchableOpacity>
-                <Text style={[styles.title, { color: mapTheme.nodeActive, fontFamily: theme.fontFamily }]}>
-                    {mode === 'TIME_ATTACK' ? 'CIRCUIT TRACE' : (mode === 'ZEN_MODE' ? 'GARDEN PATH' : `WORLD ${Math.floor(streak / 10) + 1}`)}
+                <Text style={{
+                    color: theme.accent,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 12 * fs,
+                    letterSpacing: 2,
+                }}>
+                    SYSTEM MAP
                 </Text>
                 <View style={{ width: 50 }} />
             </View>
 
-            {/* Map Container */}
-            <View style={styles.mapContainer}>
-                {/* Connecting Path */}
-                <View style={[styles.pathLine, { backgroundColor: mapTheme.path }]} />
+            {/* Status Info */}
+            <View style={styles.statusSection}>
+                <Text style={{
+                    color: theme.textPrimary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 11 * fs,
+                }}>
+                    DAY {streak + 1}
+                </Text>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 8 * fs,
+                    marginTop: 4,
+                }}>
+                    Maintenance required
+                </Text>
+            </View>
+
+            {/* Droid Display */}
+            <View style={styles.droidSection}>
+                <DroidPixelArt
+                    droidId={selectedDroid}
+                    theme={theme}
+                    size={72}
+                />
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 7 * fs,
+                    marginTop: 8,
+                }}>
+                    {droid.name}
+                </Text>
+            </View>
+
+            {/* Progress Path */}
+            <View style={styles.pathContainer}>
+                {/* Background Line */}
+                <View style={[styles.pathLine, {
+                    backgroundColor: theme.textSecondary,
+                    opacity: 0.2,
+                }]} />
+                {/* Completed Line fill */}
+                <View style={[styles.pathLine, styles.pathLineFill, {
+                    backgroundColor: theme.accent,
+                    width: `${Math.min(((nodes.findIndex(n => n.isCurrent)) / (nodes.length - 1)) * 100, 100)}%`,
+                }]} />
 
                 {/* Nodes */}
                 <View style={styles.nodesRow}>
-                    {nodes.map((levelNum, index) => {
-                        const isCurrent = index === 0; // We define "Current" as the start point for animation, moving to index 1 is the new level?
-                        // Wait, simpler: Static nodes, moving player.
+                    {nodes.map((node, index) => {
+                        const nodeSize = node.isCurrent ? 40 : 28;
                         return (
-                            <View key={levelNum} style={[styles.nodeContainer, { marginRight: 40 }]}>
-                                <View style={[
-                                    styles.node,
-                                    {
-                                        backgroundColor: mapTheme.nodeGeneric,
-                                        borderColor: mapTheme.nodeActive,
-                                        // Highlight current target
-                                        borderWidth: index === 1 ? 2 : 0
-                                    }
-                                ]}>
-                                    <Text style={{ fontFamily: theme.fontFamily, color: '#FFF', fontSize: 12 }}>
-                                        {levelNum}
+                            <View key={node.day} style={styles.nodeWrapper}>
+                                {/* Era transition label */}
+                                {node.isEraTransition && (
+                                    <Text style={{
+                                        color: theme.accent,
+                                        fontFamily: theme.fontFamily,
+                                        fontSize: 5 * fs,
+                                        position: 'absolute',
+                                        top: -20,
+                                        textAlign: 'center',
+                                        width: 70,
+                                    }}>
+                                        {node.eraName}
                                     </Text>
-                                </View>
+                                )}
+
+                                {/* Current node indicator */}
+                                {node.isCurrent ? (
+                                    <Animated.View style={[styles.node, {
+                                        width: nodeSize,
+                                        height: nodeSize,
+                                        borderRadius: theme.cardStyle.borderRadius || 0,
+                                        backgroundColor: theme.accent,
+                                        borderWidth: theme.cardStyle.borderWidth || 2,
+                                        borderColor: theme.textPrimary,
+                                        opacity: pulseAnim,
+                                    }]}>
+                                        <Text style={{
+                                            color: theme.background,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 8 * fs,
+                                            fontWeight: 'bold',
+                                        }}>
+                                            {node.day}
+                                        </Text>
+                                    </Animated.View>
+                                ) : (
+                                    <View style={[styles.node, {
+                                        width: nodeSize,
+                                        height: nodeSize,
+                                        borderRadius: theme.cardStyle.borderRadius || 0,
+                                        backgroundColor: node.isCompleted ? theme.accent : 'transparent',
+                                        borderWidth: theme.cardStyle.borderWidth || 1,
+                                        borderColor: node.isCompleted ? theme.accent : theme.textSecondary,
+                                        opacity: node.isFuture ? 0.4 : 1,
+                                    }]}>
+                                        <Text style={{
+                                            color: node.isCompleted ? theme.background : theme.textSecondary,
+                                            fontFamily: theme.fontFamily,
+                                            fontSize: 6 * fs,
+                                        }}>
+                                            {node.isCompleted ? '✓' : node.day}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {/* Day Label */}
+                                <Text style={{
+                                    color: node.isCurrent ? theme.textPrimary : theme.textSecondary,
+                                    fontFamily: theme.fontFamily,
+                                    fontSize: 5 * fs,
+                                    marginTop: 6,
+                                    opacity: node.isFuture ? 0.4 : 0.7,
+                                }}>
+                                    {node.isCurrent ? 'NOW' : (node.isCompleted ? 'DONE' : '')}
+                                </Text>
                             </View>
                         );
                     })}
                 </View>
-
-                {/* Player Token */}
-                {/* Starts at Index 0, Moves to Index 1 */}
-                <Animated.View style={[
-                    styles.playerToken,
-                    {
-                        backgroundColor: theme.accent,
-                        transform: [{ translateX }]
-                    }
-                ]}>
-                    <PixelIcon name="streak" size={30} />
-                </Animated.View>
             </View>
 
-            {/* Action */}
-            <TouchableOpacity onPress={onLevelSelect} style={[styles.startButton, theme.buttonStyle]}>
-                <Text style={[styles.startText, { color: theme.accent, fontFamily: theme.fontFamily }]}>
-                    ENTER LEVEL {streak + 1}
+            {/* Next Evolution Info */}
+            {nextEra && (
+                <View style={[styles.evolutionCard, theme.cardStyle, { padding: 14 }]}>
+                    <Text style={{
+                        color: theme.textSecondary,
+                        fontFamily: theme.fontFamily,
+                        fontSize: 7 * fs,
+                        letterSpacing: 1,
+                    }}>
+                        NEXT EVOLUTION
+                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                        <Text style={{
+                            color: theme.accent,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            {nextEra.name}
+                        </Text>
+                        <Text style={{
+                            color: theme.textPrimary,
+                            fontFamily: theme.fontFamily,
+                            fontSize: 9 * fs,
+                        }}>
+                            {nextEra.daysAway} DAYS
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {/* Begin Maintenance Button */}
+            <TouchableOpacity
+                onPress={onLevelSelect}
+                style={[styles.mainButton, theme.buttonStyle]}
+                activeOpacity={0.7}
+            >
+                <Text style={{
+                    color: theme.accent,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 11 * fs,
+                    letterSpacing: 1,
+                }}>
+                    BEGIN MAINTENANCE
                 </Text>
             </TouchableOpacity>
 
+            {/* Footer */}
+            <View style={styles.footer}>
+                <Text style={{
+                    color: theme.textSecondary,
+                    fontFamily: theme.fontFamily,
+                    fontSize: 7 * fs,
+                    opacity: 0.5,
+                }}>
+                    ● {theme.footerText}
+                </Text>
+            </View>
         </View>
     );
 };
@@ -142,62 +275,75 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         alignItems: 'center',
-        paddingTop: 60,
     },
     header: {
         width: '100%',
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 20,
-        marginBottom: 100,
+        paddingTop: 50,
+        paddingBottom: 16,
     },
-    backText: {
-        fontSize: 12,
+    backButton: {
+        width: 60,
     },
-    title: {
-        fontSize: 16,
-        letterSpacing: 2,
+    statusSection: {
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 24,
     },
-    mapContainer: {
-        height: 200,
+    droidSection: {
+        alignItems: 'center',
+        marginBottom: 36,
+    },
+    pathContainer: {
+        width: '90%',
+        maxWidth: 360,
+        height: 80,
         justifyContent: 'center',
-        alignItems: 'flex-start', // Align to left so we can pad
-        paddingLeft: 60,
+        marginBottom: 30,
     },
     pathLine: {
         position: 'absolute',
-        left: 0,
-        right: 0,
-        height: 6,
-        top: 97, // approx center
-        width: width * 2, // Overshoot
+        left: 20,
+        right: 20,
+        height: 3,
+        top: '50%',
+    },
+    pathLineFill: {
+        right: undefined,
     },
     nodesRow: {
         flexDirection: 'row',
-    },
-    nodeContainer: {
+        justifyContent: 'space-between',
         alignItems: 'center',
+        paddingHorizontal: 10,
+    },
+    nodeWrapper: {
+        alignItems: 'center',
+        position: 'relative',
     },
     node: {
-        width: NODE_SIZE,
-        height: NODE_SIZE,
-        borderRadius: NODE_SIZE / 2,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 2,
     },
-    playerToken: {
+    evolutionCard: {
+        width: '85%',
+        maxWidth: 340,
+        marginBottom: 24,
+    },
+    mainButton: {
+        width: '85%',
+        maxWidth: 340,
+        paddingVertical: 16,
+        alignItems: 'center',
+    },
+    footer: {
         position: 'absolute',
-        top: 60, // visual offset to sit ON TOP of node
-        left: 75, // Initial alignment with Node 0
-        zIndex: 10,
+        bottom: 12,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
     },
-    startButton: {
-        marginTop: 100,
-        paddingHorizontal: 40,
-        paddingVertical: 15,
-    },
-    startText: {
-        fontSize: 18,
-    }
 });
